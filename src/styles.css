@@ -296,7 +296,7 @@ button:focus-visible {
   display: flex;
   flex-shrink: 0;
   align-items: center;
-  gap: 14px;
+  gap: 8px;
 }
 
 .flow-icon {
@@ -363,16 +363,25 @@ button:focus-visible {
 .secondary-button,
 .danger-button,
 .dark-button {
-  height: 36px;
-  border-radius: 18px;
   cursor: pointer;
 }
 
+.secondary-button,
+.danger-button,
+.dark-button {
+  height: 36px;
+  border-radius: 18px;
+}
+
 .flow-action-button {
-  min-width: 118px;
+  height: 28px;
+  min-width: 72px;
+  padding: 0 14px;
   border: 0;
+  border-radius: 14px;
   background: #eeeeee;
   color: #333333;
+  font-size: 13px;
 }
 
 .flow-action-button:hover {
@@ -391,13 +400,17 @@ button:focus-visible {
 }
 
 .flow-action-button.outline {
-  border: 1px solid #333333;
+  min-width: auto;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 4px;
   background: transparent;
-  color: #333333;
+  color: #666666;
 }
 
 .flow-action-button.outline:hover {
   background: #eeeeee;
+  color: #333333;
 }
 
 .payment-grid {
