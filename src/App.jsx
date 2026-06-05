@@ -1,15 +1,17 @@
 import { useMemo, useState } from "react";
 import { flushSync } from "react-dom";
 
+const assetPath = (path) => `${import.meta.env.BASE_URL}${path}`;
+
 const ICONS = {
-  back: "/icons/chevron-left.svg",
-  down: "/icons/angle-down.svg",
-  merchantLogo: "/icons/merchant-logo.png",
-  weiqifu: "/icons/weiqifu.png",
-  info: "/icons/circle-info.svg",
-  weixin: "/icons/weixin.svg",
-  alipay: "/icons/alipay.svg",
-  card: "/icons/credit-card.svg",
+  back: assetPath("icons/chevron-left.svg"),
+  down: assetPath("icons/angle-down.svg"),
+  merchantLogo: assetPath("icons/merchant-logo.png"),
+  weiqifu: assetPath("icons/weiqifu.png"),
+  info: assetPath("icons/circle-info.svg"),
+  weixin: assetPath("icons/weixin.svg"),
+  alipay: assetPath("icons/alipay.svg"),
+  card: assetPath("icons/credit-card.svg"),
 };
 
 const MODES = [
