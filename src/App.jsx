@@ -69,11 +69,11 @@ const MODE_COPY = {
 
 function normalizeMode(mode) {
   if (mode === "cancelled" || mode === "expired") return "idle";
-  return MODES.some((item) => item.key === mode) ? mode : "pending";
+  return MODES.some((item) => item.key === mode) ? mode : "idle";
 }
 
 function getInitialMode() {
-  if (typeof window === "undefined") return "pending";
+  if (typeof window === "undefined") return "idle";
   const requestedMode = new URLSearchParams(window.location.search).get("state");
   return normalizeMode(requestedMode);
 }
