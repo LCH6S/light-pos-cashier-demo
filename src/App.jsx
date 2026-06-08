@@ -288,6 +288,14 @@ function EnterpriseWalletSection({ order, mode, selected, onToggle }) {
   const frozen = order.walletFrozen ?? 0;
   const unavailable = available <= 0 && frozen <= 0;
   const disabled = locked || unavailable;
+  const walletUseAmount = selected
+    ? frozen > 0
+      ? frozen
+      : Math.min(available, order.amount)
+    : 0;
+  const remainingAmount = Math.max(order.amount - walletUseAmount, 0);
+  const showCombinationTip = mode === "idle" && walletUseAmount > 0 && remainingAmount > 0;
+  const showFullWalletTip = mode === "idle" && walletUseAmount >= order.amount;
 
   return (
     <section className="cashier-section wallet-section">
@@ -295,11 +303,14 @@ function EnterpriseWalletSection({ order, mode, selected, onToggle }) {
         <h2>企业钱包账户</h2>
       </div>
       <button
+        aria-disabled={disabled}
         className={`wallet-option ${selected ? "selected" : ""} ${
+          locked ? "locked" : ""
+        } ${
           unavailable ? "unavailable" : ""
         }`}
         data-testid="wallet-option"
-        disabled={disabled}
+        disabled={unavailable}
         onClick={onToggle}
         type="button"
       >
@@ -310,26 +321,42 @@ function EnterpriseWalletSection({ order, mode, selected, onToggle }) {
           {unavailable ? (
             <em>无可用余额</em>
           ) : frozen > 0 ? (
-            <em>
-              可用余额：{formatCurrency(available)}　冻结余额：
-              {formatCurrency(frozen)}
-            </em>
+            <em>可用余额：{formatCurrency(available)}</em>
           ) : (
             <em>可用余额：{formatCurrency(available)}</em>
           )}
         </span>
+        {frozen > 0 ? (
+          <span className="wallet-frozen-summary">
+            <strong>已冻结-{formatCurrency(frozen)}</strong>
+            <em>腾讯微企付支付成功后自动扣除。</em>
+          </span>
+        ) : walletUseAmount > 0 ? (
+          <span className="wallet-used-amount">-{formatCurrency(walletUseAmount)}</span>
+        ) : null}
       </button>
+      {showCombinationTip ? (
+        <div className="wallet-pay-tip" data-testid="wallet-combo-tip">
+          请选择剩余金额支付方式
+        </div>
+      ) : null}
+      {showFullWalletTip ? (
+        <div className="wallet-pay-tip" data-testid="wallet-full-tip">
+          已使用企业钱包账户全额抵扣，无需选择其他支付方式
+        </div>
+      ) : null}
     </section>
   );
 }
 
-function TransferOptionCard({ selectedMethod, onSelect }) {
-  const isSelected = selectedMethod === "transfer";
+function TransferOptionCard({ selectedMethod, locked, onSelect }) {
+  const isSelected = selectedMethod === "transfer" && !locked;
 
   return (
     <button
       className={`transfer-option ${isSelected ? "selected" : ""}`}
       data-testid="transfer-option"
+      disabled={locked}
       onClick={onSelect}
       type="button"
     >
@@ -384,6 +411,77 @@ function TransferFlowCard({ order, onQuery, onCancel }) {
   );
 }
 
+function PendingTransferPanel({ order, onContinue, onQuery, onCancel }) {
+  const frozenAmount = order.walletFrozen ?? 0;
+  const transferAmount = order.transferAmount ?? order.amount;
+  const hasFrozenWallet = frozenAmount > 0;
+
+  return (
+    <section className="pending-transfer-panel" data-testid="pending-transfer-panel">
+      <div className="pending-transfer-head">
+        <div>
+          <h2>银行转账处理中</h2>
+          <p>如需更换支付方式，请先取消当前银行转账。</p>
+        </div>
+      </div>
+
+      <div className="pending-transfer-card">
+        <div className="pending-method-stack">
+          <div className="pending-method-row transfer">
+            <div className="pending-method-main">
+              <span className="flow-icon">
+                <Icon src={ICONS.weiqifu} tone="native" />
+              </span>
+              <div>
+                <strong>腾讯微企付</strong>
+                <p>请联系财务同事根据转账信息完成付款</p>
+              </div>
+            </div>
+            <div className="pending-method-side">
+              <div className="pending-method-amount">
+                <span>待转账</span>
+                <strong>{formatCurrency(transferAmount)}</strong>
+                {hasFrozenWallet ? (
+                  <em>
+                    订单金额 {formatCurrency(order.amount)}，企业钱包抵扣{" "}
+                    {formatCurrency(frozenAmount)}
+                  </em>
+                ) : null}
+              </div>
+            </div>
+          </div>
+
+          <div className="pending-transfer-info">
+            <p>收款方：{order.payeeName}</p>
+            <p>截止时间：请在 {order.flowExpireAt} 前完成转账付款</p>
+          </div>
+
+        </div>
+        <div className="pending-transfer-actions">
+          <button
+            className="flow-action-button outline"
+            data-testid="cancel-transfer"
+            onClick={onCancel}
+            type="button"
+          >
+            取消
+          </button>
+          <button className="flow-action-button" onClick={onQuery} type="button">
+            已转账
+          </button>
+          <button
+            className="flow-action-button primary"
+            onClick={onContinue}
+            type="button"
+          >
+            继续转账
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function BankTransferSection({
   mode,
   selectedMethod,
@@ -391,6 +489,7 @@ function BankTransferSection({
   onQuery,
   onSelect,
   onCancel,
+  transferLocked,
 }) {
   const hasActiveFlow = mode === "pending";
 
@@ -403,7 +502,11 @@ function BankTransferSection({
       {hasActiveFlow ? (
         <TransferFlowCard order={order} onQuery={onQuery} onCancel={onCancel} />
       ) : (
-        <TransferOptionCard selectedMethod={selectedMethod} onSelect={onSelect} />
+        <TransferOptionCard
+          locked={transferLocked}
+          selectedMethod={selectedMethod}
+          onSelect={onSelect}
+        />
       )}
     </section>
   );
@@ -413,9 +516,9 @@ function OnlinePaySection({
   mode,
   selectedMethod,
   onSelect,
-  walletCombinationLocked,
+  walletCoversOrder,
 }) {
-  const locked = mode === "pending" || mode === "paid" || walletCombinationLocked;
+  const locked = mode === "pending" || mode === "paid" || walletCoversOrder;
 
   return (
     <section className={`cashier-section online-section ${locked ? "locked" : ""}`}>
@@ -423,8 +526,6 @@ function OnlinePaySection({
         <h2>在线支付</h2>
         {mode === "pending" ? (
           <span>当前存在进行中的腾讯微企付，请取消后再选择其他支付方式</span>
-        ) : walletCombinationLocked ? (
-          <span>已选择企业钱包，剩余金额请使用腾讯微企付完成</span>
         ) : null}
       </div>
       <div className="payment-grid">
@@ -452,40 +553,22 @@ function OnlinePaySection({
 function BottomBar({ order, mode, walletSelected, selectedMethod, onPrimary }) {
   const walletUse = getWalletUseAmount(order, walletSelected);
   const remainingAfterWallet = Math.max(order.amount - walletUse, 0);
-  const hasFrozenWallet = (order.walletFrozen ?? 0) > 0;
   const pendingAmount = order.transferAmount ?? order.amount;
   const onlineReady = Boolean(selectedMethod && selectedMethod !== "transfer");
   const transferReady = selectedMethod === "transfer" || mode === "pending";
   const walletFullReady = walletSelected && walletUse > 0 && remainingAfterWallet === 0;
   const disabled =
     mode === "paid" ||
-    (!transferReady && !onlineReady && !walletFullReady) ||
-    (walletSelected && remainingAfterWallet > 0 && selectedMethod !== "transfer");
+    (!transferReady && !onlineReady && !walletFullReady);
   const label = mode === "pending" ? "继续转账" : "立即支付";
+  const payableAmount =
+    mode === "pending" ? pendingAmount : walletSelected ? remainingAfterWallet : order.amount;
 
   return (
     <footer className="bottom-bar">
       <div className="payable">
-        {mode === "pending" && hasFrozenWallet ? (
-          <>
-            <span>企业钱包冻结：</span>
-            <strong>{formatCurrency(order.walletFrozen)}</strong>
-            <span>待转账：</span>
-            <strong>{formatCurrency(pendingAmount)}</strong>
-          </>
-        ) : walletSelected && walletUse > 0 ? (
-          <>
-            <span>企业钱包：</span>
-            <strong>{formatCurrency(walletUse)}</strong>
-            <span>剩余待支付：</span>
-            <strong>{formatCurrency(remainingAfterWallet)}</strong>
-          </>
-        ) : (
-          <>
-            <span>待支付：</span>
-            <strong>{formatCurrency(order.amount)}</strong>
-          </>
-        )}
+        <span>待支付：</span>
+        <strong>{formatCurrency(payableAmount)}</strong>
       </div>
       <button
         className={`bottom-primary ${disabled ? "disabled" : ""} ${
@@ -754,7 +837,7 @@ export function App() {
 
   const walletUse = getWalletUseAmount(order, walletSelected);
   const remainingAfterWallet = Math.max(order.amount - walletUse, 0);
-  const walletCombinationLocked = walletSelected && walletUse > 0 && remainingAfterWallet > 0;
+  const walletCoversOrder = walletSelected && walletUse >= order.amount;
 
   function submitScenario() {
     const nextOrder = createRuntimeOrder(selectedScenario, selectedPaymentCase);
@@ -783,22 +866,32 @@ export function App() {
     }
 
     const nextSelected = !walletSelected;
+    const nextWalletUse =
+      nextSelected && order.walletAvailable > 0
+        ? Math.min(order.walletAvailable, order.amount)
+        : 0;
+    const nextWalletCoversOrder = nextSelected && nextWalletUse >= order.amount;
+
     setWalletSelected(nextSelected);
-    if (nextSelected && selectedMethod !== "transfer") {
+    if (nextWalletCoversOrder || (nextSelected && selectedMethod !== "transfer")) {
       setSelectedMethod(null);
     }
   }
 
   function selectTransfer() {
-    if (mode === "paid") return;
+    if (mode === "paid" || walletCoversOrder) return;
     setQueryDialogOpen(false);
     setSelectedMethod("transfer");
   }
 
   function selectOnline(method) {
-    if (mode === "pending" || mode === "paid" || walletCombinationLocked) return;
+    if (mode === "pending" || mode === "paid" || walletCoversOrder) {
+      return;
+    }
     setQueryDialogOpen(false);
-    setWalletSelected(false);
+    if (!walletSelected) {
+      setWalletSelected(false);
+    }
     setSelectedMethod(method);
   }
 
@@ -853,6 +946,7 @@ export function App() {
   function completeOnlinePayment() {
     const methodLabel =
       ONLINE_METHODS.find((method) => method.key === selectedMethod)?.label ?? "在线支付";
+    const walletDebitAmount = walletSelected ? walletUse : 0;
 
     flushSync(() => {
       setLoadingLabel("支付中");
@@ -863,12 +957,19 @@ export function App() {
     window.setTimeout(() => {
       setOrder((current) => ({
         ...current,
-        resultMethod: methodLabel,
+        walletAvailable:
+          typeof current.walletAvailable === "number"
+            ? current.walletAvailable - walletDebitAmount
+            : null,
+        walletUsedAmount: walletDebitAmount,
+        resultMethod:
+          walletDebitAmount > 0 ? `企业钱包账户 + ${methodLabel}` : methodLabel,
       }));
       setLoading(false);
       setLoadingLabel("处理中");
       setMode("paid");
       setPage("merchant");
+      setWalletSelected(false);
       setSelectedMethod(null);
     }, 850);
   }
@@ -997,35 +1098,49 @@ export function App() {
         <OrderSummary order={order} />
 
         <section className="cashier-panel">
-          <EnterpriseWalletSection
-            order={order}
-            mode={mode}
-            selected={walletSelected}
-            onToggle={selectWallet}
-          />
-          <BankTransferSection
-            mode={mode}
-            selectedMethod={visibleMethod}
-            order={order}
-            onQuery={queryTransferResult}
-            onSelect={selectTransfer}
-            onCancel={() => setCancelOpen(true)}
-          />
-          <OnlinePaySection
-            mode={mode}
-            selectedMethod={visibleMethod}
-            onSelect={selectOnline}
-            walletCombinationLocked={walletCombinationLocked}
-          />
+          {mode === "pending" ? (
+            <PendingTransferPanel
+              order={order}
+              onContinue={primaryAction}
+              onQuery={queryTransferResult}
+              onCancel={() => setCancelOpen(true)}
+            />
+          ) : (
+            <>
+              <EnterpriseWalletSection
+                order={order}
+                mode={mode}
+                selected={walletSelected}
+                onToggle={selectWallet}
+              />
+              <BankTransferSection
+                mode={mode}
+                selectedMethod={visibleMethod}
+                order={order}
+                onQuery={queryTransferResult}
+                onSelect={selectTransfer}
+                onCancel={() => setCancelOpen(true)}
+                transferLocked={walletCoversOrder}
+              />
+              <OnlinePaySection
+                mode={mode}
+                selectedMethod={visibleMethod}
+                onSelect={selectOnline}
+                walletCoversOrder={walletCoversOrder}
+              />
+            </>
+          )}
         </section>
       </main>
-      <BottomBar
-        order={order}
-        mode={mode}
-        walletSelected={walletSelected}
-        selectedMethod={visibleMethod}
-        onPrimary={primaryAction}
-      />
+      {mode !== "pending" ? (
+        <BottomBar
+          order={order}
+          mode={mode}
+          walletSelected={walletSelected}
+          selectedMethod={visibleMethod}
+          onPrimary={primaryAction}
+        />
+      ) : null}
       {cancelOpen ? (
         <CancelDialog onClose={() => setCancelOpen(false)} onConfirm={confirmCancel} />
       ) : null}

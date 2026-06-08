@@ -348,13 +348,38 @@ button:focus-visible {
   cursor: pointer;
 }
 
+.wallet-option {
+  grid-template-columns: 40px 52px minmax(0, 1fr) auto;
+}
+
 .transfer-option.selected,
 .wallet-option.selected {
   border-color: #333333;
   box-shadow: inset 0 0 0 1px #333333;
 }
 
+.transfer-option:disabled {
+  border: 0;
+  background: #fafafa;
+  color: #999999;
+  cursor: not-allowed;
+}
+
+.transfer-option:disabled .icon,
+.transfer-option:disabled .option-check {
+  opacity: 0.45;
+}
+
+.transfer-option:disabled .option-main strong,
+.transfer-option:disabled .option-main em {
+  color: #999999;
+}
+
 .wallet-option:disabled {
+  cursor: not-allowed;
+}
+
+.wallet-option.locked {
   cursor: not-allowed;
 }
 
@@ -443,23 +468,70 @@ button:focus-visible {
 .wallet-main {
   display: flex;
   min-width: 0;
-  flex-direction: column;
-  gap: 4px;
+  align-items: center;
+  flex-direction: row;
+  gap: 14px;
 }
 
 .wallet-main strong {
+  flex: 0 0 auto;
   color: #333333;
   font-size: 15px;
   font-weight: 500;
 }
 
 .wallet-main em {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
   overflow: hidden;
   color: #999999;
   font-style: normal;
   font-size: 13px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.wallet-used-amount {
+  color: #ff2e2e;
+  font-family: Arial, sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.wallet-frozen-summary {
+  display: flex;
+  min-width: 210px;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-self: end;
+  gap: 4px;
+  text-align: right;
+}
+
+.wallet-frozen-summary strong {
+  color: #333333;
+  font-family: Arial, sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.wallet-frozen-summary em {
+  color: #777777;
+  font-style: normal;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.wallet-pay-tip {
+  display: flex;
+  min-height: 32px;
+  align-items: center;
+  margin-top: 8px;
+  padding: 0 14px;
+  background: #f7f7f7;
+  color: #777777;
+  font-size: 13px;
 }
 
 .transfer-flow {
@@ -602,6 +674,137 @@ button:focus-visible {
 .flow-action-button.outline:hover {
   background: #eeeeee;
   color: #333333;
+}
+
+.pending-transfer-panel {
+  max-width: 1060px;
+  margin: 24px auto 0;
+}
+
+.pending-transfer-head {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 18px;
+}
+
+.pending-transfer-head h2 {
+  margin: 0;
+  color: #333333;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.pending-transfer-head p {
+  margin: 8px 0 0;
+  color: #888888;
+  font-size: 13px;
+}
+
+.pending-transfer-card {
+  padding: 28px 34px 24px;
+  background: #f7f7f7;
+  box-shadow: inset 3px 0 0 #333333;
+}
+
+.pending-method-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.pending-method-row {
+  display: flex;
+  min-height: 64px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 32px;
+}
+
+.pending-method-row + .pending-method-row {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid #e5e5e5;
+}
+
+.pending-method-main {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 16px;
+}
+
+.pending-method-main strong {
+  color: #333333;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.pending-method-main p {
+  margin: 7px 0 0;
+  color: #777777;
+  font-size: 13px;
+}
+
+.pending-method-amount {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 5px;
+  text-align: right;
+}
+
+.pending-method-side {
+  display: flex;
+  min-width: 180px;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.pending-method-amount span {
+  color: #888888;
+  font-size: 12px;
+}
+
+.pending-method-amount strong {
+  color: #333333;
+  font-family: Arial, sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.pending-method-amount em {
+  max-width: 280px;
+  color: #777777;
+  font-style: normal;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.pending-transfer-info {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+  margin-left: 52px;
+}
+
+.pending-transfer-info p {
+  overflow: hidden;
+  margin: 0;
+  color: #333333;
+  font-size: 14px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pending-transfer-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 24px;
 }
 
 .payment-grid {
@@ -1313,6 +1516,26 @@ button:focus-visible {
     padding-left: 16px;
   }
 
+  .wallet-option {
+    grid-template-columns: 30px 40px 1fr;
+  }
+
+  .wallet-used-amount {
+    grid-column: 3;
+  }
+
+  .wallet-frozen-summary {
+    grid-column: 3;
+    min-width: 0;
+    align-items: flex-start;
+    margin-top: 4px;
+    text-align: left;
+  }
+
+  .wallet-frozen-summary em {
+    white-space: normal;
+  }
+
   .flow-head,
   .flow-head-main,
   .flow-head-actions {
@@ -1326,6 +1549,40 @@ button:focus-visible {
   .flow-details,
   .payment-grid {
     grid-template-columns: 1fr;
+  }
+
+  .pending-transfer-card {
+    padding: 24px 20px;
+  }
+
+  .pending-transfer-head,
+  .pending-method-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .pending-method-row {
+    gap: 14px;
+  }
+
+  .pending-method-amount {
+    min-width: 0;
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .pending-method-side {
+    min-width: 0;
+    align-items: flex-start;
+  }
+
+  .pending-transfer-info {
+    margin-left: 0;
+  }
+
+  .pending-transfer-actions {
+    flex-wrap: wrap;
+    justify-content: flex-start;
   }
 
   .merchant-success-panel {
