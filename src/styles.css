@@ -83,6 +83,142 @@ button:focus-visible {
   font-weight: 600;
 }
 
+.simulator-shell {
+  width: 1200px;
+  margin: 16px auto 0;
+}
+
+.simulator-panel {
+  min-height: 620px;
+  padding: 42px 42px 52px;
+  background: #ffffff;
+}
+
+.simulator-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding-bottom: 28px;
+  border-bottom: 1px solid #eeeeee;
+}
+
+.simulator-head h1 {
+  margin: 0 0 8px;
+  color: #2f2f2f;
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.simulator-head p {
+  margin: 0;
+  color: #777777;
+}
+
+.simulator-section {
+  margin-top: 30px;
+}
+
+.simulator-section h2 {
+  margin: 0 0 12px;
+  color: #666666;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.simulator-choice-grid {
+  display: grid;
+  gap: 18px;
+}
+
+.simulator-choice-grid.two {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.simulator-choice-grid.three {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.simulator-card {
+  display: flex;
+  min-height: 132px;
+  align-items: flex-start;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 28px;
+  border: 1px solid #e6e6e6;
+  background: #ffffff;
+  color: #333333;
+  text-align: left;
+  cursor: pointer;
+}
+
+.simulator-card.compact {
+  min-height: 96px;
+}
+
+.simulator-card.selected {
+  border-color: #333333;
+  box-shadow: inset 0 0 0 1px #333333;
+}
+
+.simulator-card strong {
+  color: #2f2f2f;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.simulator-card span {
+  color: #555555;
+}
+
+.simulator-card em {
+  color: #999999;
+  font-style: normal;
+  font-size: 13px;
+}
+
+.simulator-summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  margin-top: 32px;
+  background: #eeeeee;
+}
+
+.simulator-summary div {
+  display: flex;
+  min-height: 76px;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 24px;
+  background: #fafafa;
+}
+
+.simulator-summary span {
+  color: #999999;
+  font-size: 12px;
+}
+
+.simulator-summary strong {
+  color: #333333;
+  font-weight: 600;
+}
+
+.simulator-submit {
+  display: block;
+  width: 300px;
+  height: 48px;
+  margin: 36px 0 0 auto;
+  border: 0;
+  border-radius: 24px;
+  background: #333333;
+  color: #ffffff;
+  font-size: 17px;
+  cursor: pointer;
+}
+
 .page-shell {
   width: 1200px;
   margin: 16px auto 0;
@@ -194,13 +330,15 @@ button:focus-visible {
 }
 
 .transfer-option,
-.transfer-flow {
+.transfer-flow,
+.wallet-option {
   width: 100%;
   border: 1px solid #e6e6e6;
   background: #ffffff;
 }
 
-.transfer-option {
+.transfer-option,
+.wallet-option {
   display: grid;
   min-height: 68px;
   grid-template-columns: 40px 52px 1fr;
@@ -210,9 +348,25 @@ button:focus-visible {
   cursor: pointer;
 }
 
-.transfer-option.selected {
+.transfer-option.selected,
+.wallet-option.selected {
   border-color: #333333;
   box-shadow: inset 0 0 0 1px #333333;
+}
+
+.wallet-option:disabled {
+  cursor: not-allowed;
+}
+
+.wallet-option.unavailable {
+  border-color: transparent;
+  background: #fafafa;
+  color: #999999;
+}
+
+.wallet-option.unavailable .option-check,
+.wallet-option.unavailable .wallet-glyph {
+  opacity: 0.45;
 }
 
 .option-check {
@@ -247,6 +401,21 @@ button:focus-visible {
   height: 30px;
 }
 
+.wallet-glyph {
+  display: flex;
+  width: 30px;
+  height: 30px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  background: #333333;
+  color: #ffffff;
+  font-family: Arial, sans-serif;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1;
+}
+
 .option-main {
   display: flex;
   flex-direction: column;
@@ -269,6 +438,28 @@ button:focus-visible {
   color: #999999;
   font-style: normal;
   font-size: 13px;
+}
+
+.wallet-main {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.wallet-main strong {
+  color: #333333;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.wallet-main em {
+  overflow: hidden;
+  color: #999999;
+  font-style: normal;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .transfer-flow {
@@ -469,6 +660,7 @@ button:focus-visible {
 .payable {
   display: flex;
   align-items: baseline;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
@@ -1054,7 +1246,8 @@ button:focus-visible {
 }
 
 @media (max-width: 1240px) {
-  .page-shell {
+  .page-shell,
+  .simulator-shell {
     width: calc(100vw - 48px);
   }
 
@@ -1078,9 +1271,24 @@ button:focus-visible {
     height: 30px;
   }
 
-  .page-shell {
+  .page-shell,
+  .simulator-shell {
     width: calc(100vw - 24px);
     margin-top: 12px;
+  }
+
+  .simulator-panel {
+    padding: 30px 18px 36px;
+  }
+
+  .simulator-choice-grid.two,
+  .simulator-choice-grid.three,
+  .simulator-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .simulator-submit {
+    width: 100%;
   }
 
   .order-summary {
@@ -1098,6 +1306,7 @@ button:focus-visible {
   }
 
   .transfer-option,
+  .wallet-option,
   .payment-card {
     grid-template-columns: 30px 40px 1fr;
     padding-right: 16px;

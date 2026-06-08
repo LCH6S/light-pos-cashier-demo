@@ -14,12 +14,6 @@ const ICONS = {
   card: assetPath("icons/credit-card.svg"),
 };
 
-const MODES = [
-  { key: "idle", label: "未发起" },
-  { key: "pending", label: "待转账" },
-  { key: "paid", label: "结果页" },
-];
-
 const ONLINE_METHODS = [
   {
     key: "wechat",
@@ -41,73 +35,115 @@ const ONLINE_METHODS = [
   },
 ];
 
-const ORDER = {
-  amount: "￥32,000.00",
-  payable: "￥32,000.00",
-  orderNo: "57372319938",
-  transferNo: "WQF20260604000189",
-  tenderNo: "LP20260604009382",
+const ORDER_SHARED = {
+  payeeName: "皮氏咖啡(上海)有限公司",
   createdAt: "2026-06-04 10:28",
   flowExpireAt: "2026-06-19 10:28",
-  payeeName: "皮氏咖啡(上海)有限公司",
+  transferNo: "WQF20260604000189",
+  tenderNo: "LP20260604009382",
+  transferRemark: "WQ12345678987",
 };
 
-const MODE_COPY = {
-  idle: {
-    bottomLabel: "立即支付",
-    bottomDisabled: true,
+const PAYMENT_CASES = [
+  {
+    key: "payment-200",
+    label: "订单 ￥1,000 / 钱包 ￥200",
+    amount: 1000,
+    walletBalance: 200,
+    orderNo: "57372319939",
   },
-  pending: {
-    bottomLabel: "继续转账",
-    bottomDisabled: false,
+  {
+    key: "payment-4000",
+    label: "订单 ￥1,000 / 钱包 ￥4,000",
+    amount: 1000,
+    walletBalance: 4000,
+    orderNo: "57372319940",
   },
-  paid: {
-    bottomLabel: "",
-    bottomDisabled: true,
+  {
+    key: "payment-0",
+    label: "订单 ￥1,000 / 钱包 ￥0",
+    amount: 1000,
+    walletBalance: 0,
+    orderNo: "57372319941",
   },
+];
+
+const RECHARGE_CASE = {
+  key: "recharge",
+  scenarioType: "recharge",
+  label: "企业充值",
+  amount: 32000,
+  walletBalance: null,
+  enterpriseCustomerId: null,
+  orderNo: "57372319938",
 };
 
-function normalizeMode(mode) {
-  if (mode === "cancelled" || mode === "expired") return "idle";
-  return MODES.some((item) => item.key === mode) ? mode : "idle";
+function formatCurrency(amount) {
+  return `￥${Number(amount).toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
 }
 
-function getInitialMode() {
-  if (typeof window === "undefined") return "idle";
-  const requestedMode = new URLSearchParams(window.location.search).get("state");
-  return normalizeMode(requestedMode);
+function createRuntimeOrder(scenarioKey, paymentCaseKey) {
+  const paymentCase =
+    PAYMENT_CASES.find((item) => item.key === paymentCaseKey) ?? PAYMENT_CASES[0];
+  const base =
+    scenarioKey === "recharge"
+      ? RECHARGE_CASE
+      : {
+          ...paymentCase,
+          scenarioType: "payment",
+          label: "企业付款",
+          enterpriseCustomerId: "ENT-PEETS-001",
+        };
+
+  return {
+    ...ORDER_SHARED,
+    ...base,
+    walletInitialBalance: base.walletBalance,
+    walletAvailable: base.walletBalance ?? null,
+    walletFrozen: 0,
+    walletUsedAmount: 0,
+    transferAmount: null,
+    transferStatus: null,
+    resultMethod: null,
+  };
 }
 
-function syncUrlMode(nextMode) {
-  if (typeof window === "undefined") return;
-  const url = new URL(window.location.href);
-  url.searchParams.set("state", nextMode);
-  url.searchParams.delete("page");
-  window.history.replaceState({}, "", url);
-}
-
-function syncUrlPage(page) {
-  if (typeof window === "undefined") return;
-  const url = new URL(window.location.href);
-  if (page === "cashier") {
-    url.searchParams.delete("page");
-  } else {
-    url.searchParams.set("page", page);
+function getWalletUseAmount(order, walletSelected) {
+  if (!order?.enterpriseCustomerId || !walletSelected || order.walletAvailable <= 0) {
+    return 0;
   }
-  window.history.replaceState({}, "", url);
+
+  return Math.min(order.walletAvailable, order.amount);
+}
+
+function releaseWalletFreeze(order) {
+  const frozen = order.walletFrozen ?? 0;
+
+  return {
+    ...order,
+    walletAvailable:
+      typeof order.walletAvailable === "number" ? order.walletAvailable + frozen : null,
+    walletFrozen: 0,
+    walletUsedAmount: 0,
+  };
 }
 
 function Icon({ src, tone = "dark", className = "" }) {
   return <img className={`icon icon-${tone} ${className}`} src={src} alt="" />;
 }
 
-function AppHeader() {
+function AppHeader({ onBack }) {
   return (
     <header className="topbar">
-      <button className="back-button" type="button">
-        <Icon src={ICONS.back} className="back-icon" />
-        返回
-      </button>
+      {onBack ? (
+        <button className="back-button" onClick={onBack} type="button">
+          <Icon src={ICONS.back} className="back-icon" />
+          返回
+        </button>
+      ) : null}
       <img className="brand-logo" src={ICONS.merchantLogo} alt="Peet's Coffee" />
       <button className="language-button" type="button">
         中文
@@ -117,7 +153,107 @@ function AppHeader() {
   );
 }
 
-function OrderSummary() {
+function OrderSimulatorPage({
+  selectedScenario,
+  selectedPaymentCase,
+  onScenarioChange,
+  onPaymentCaseChange,
+  onSubmit,
+}) {
+  const isPayment = selectedScenario === "payment";
+
+  return (
+    <>
+      <AppHeader />
+      <main className="simulator-shell">
+        <section className="simulator-panel">
+          <div className="simulator-head">
+            <div>
+              <h1>B2B 订单模拟下单</h1>
+              <p>默认 business_type=b2b，品牌已开通企业钱包支付方式 1102。</p>
+            </div>
+          </div>
+
+          <div className="simulator-section">
+            <h2>下单场景</h2>
+            <div className="simulator-choice-grid two">
+              <button
+                className={`simulator-card ${
+                  selectedScenario === "recharge" ? "selected" : ""
+                }`}
+                data-testid="scenario-recharge"
+                onClick={() => onScenarioChange("recharge")}
+                type="button"
+              >
+                <strong>企业充值</strong>
+                <span>订单金额 ￥32,000.00</span>
+                <em>不传企业客户 id</em>
+              </button>
+              <button
+                className={`simulator-card ${isPayment ? "selected" : ""}`}
+                data-testid="scenario-payment"
+                onClick={() => onScenarioChange("payment")}
+                type="button"
+              >
+                <strong>企业付款</strong>
+                <span>订单金额 ￥1,000.00</span>
+                <em>传企业客户 id，展示企业钱包账户</em>
+              </button>
+            </div>
+          </div>
+
+          {isPayment ? (
+            <div className="simulator-section">
+              <h2>企业付款金额组合</h2>
+              <div className="simulator-choice-grid three">
+                {PAYMENT_CASES.map((item) => (
+                  <button
+                    className={`simulator-card compact ${
+                      selectedPaymentCase === item.key ? "selected" : ""
+                    }`}
+                    data-testid={item.key}
+                    key={item.key}
+                    onClick={() => onPaymentCaseChange(item.key)}
+                    type="button"
+                  >
+                    <strong>{item.label}</strong>
+                    <span>企业钱包可用余额 {formatCurrency(item.walletBalance)}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          <div className="simulator-summary">
+            <div>
+              <span>业务类型</span>
+              <strong>b2b</strong>
+            </div>
+            <div>
+              <span>品牌企业钱包支付</span>
+              <strong>已开通 1102</strong>
+            </div>
+            <div>
+              <span>企业客户 id</span>
+              <strong>{isPayment ? "ENT-PEETS-001" : "不传"}</strong>
+            </div>
+          </div>
+
+          <button
+            className="simulator-submit"
+            data-testid="simulate-submit"
+            onClick={onSubmit}
+            type="button"
+          >
+            模拟下单
+          </button>
+        </section>
+      </main>
+    </>
+  );
+}
+
+function OrderSummary({ order }) {
   return (
     <section className="order-summary">
       <div className="order-copy">
@@ -126,23 +262,75 @@ function OrderSummary() {
           请您在 <span className="danger">14 天 23 小时 59 分</span>{" "}
           内完成支付，否则订单将被自动关闭
         </p>
-        <p>订单编号： {ORDER.orderNo}</p>
+        <p>订单编号： {order.orderNo}</p>
       </div>
       <div className="amount-block">
         <span>订单金额</span>
-        <strong>{ORDER.amount}</strong>
+        <strong>{formatCurrency(order.amount)}</strong>
       </div>
     </section>
   );
 }
 
-function TransferOptionCard({ selectedMethod, onStart }) {
+function WalletGlyph() {
+  return (
+    <span className="wallet-glyph" aria-hidden="true">
+      ¥
+    </span>
+  );
+}
+
+function EnterpriseWalletSection({ order, mode, selected, onToggle }) {
+  if (!order.enterpriseCustomerId) return null;
+
+  const locked = mode === "pending";
+  const available = order.walletAvailable ?? 0;
+  const frozen = order.walletFrozen ?? 0;
+  const unavailable = available <= 0 && frozen <= 0;
+  const disabled = locked || unavailable;
+
+  return (
+    <section className="cashier-section wallet-section">
+      <div className="section-title-row">
+        <h2>企业钱包账户</h2>
+      </div>
+      <button
+        className={`wallet-option ${selected ? "selected" : ""} ${
+          unavailable ? "unavailable" : ""
+        }`}
+        data-testid="wallet-option"
+        disabled={disabled}
+        onClick={onToggle}
+        type="button"
+      >
+        <span className="option-check" />
+        <WalletGlyph />
+        <span className="wallet-main">
+          <strong>企业钱包账户</strong>
+          {unavailable ? (
+            <em>无可用余额</em>
+          ) : frozen > 0 ? (
+            <em>
+              可用余额：{formatCurrency(available)}　冻结余额：
+              {formatCurrency(frozen)}
+            </em>
+          ) : (
+            <em>可用余额：{formatCurrency(available)}</em>
+          )}
+        </span>
+      </button>
+    </section>
+  );
+}
+
+function TransferOptionCard({ selectedMethod, onSelect }) {
   const isSelected = selectedMethod === "transfer";
 
   return (
     <button
       className={`transfer-option ${isSelected ? "selected" : ""}`}
-      onClick={onStart}
+      data-testid="transfer-option"
+      onClick={onSelect}
       type="button"
     >
       <span className="option-check" />
@@ -159,7 +347,7 @@ function TransferOptionCard({ selectedMethod, onStart }) {
   );
 }
 
-function TransferFlowCard({ onQuery, onCancel }) {
+function TransferFlowCard({ order, onQuery, onCancel }) {
   return (
     <div className="transfer-flow">
       <div className="flow-head">
@@ -173,8 +361,8 @@ function TransferFlowCard({ onQuery, onCancel }) {
               <span className="flow-badge pending">待财务转账</span>
             </div>
             <div className="flow-details">
-              <p>收款方：{ORDER.payeeName}</p>
-              <p>截止时间：请在 {ORDER.flowExpireAt} 前完成转账付款</p>
+              <p>收款方：{order.payeeName}</p>
+              <p>截止时间：请在 {order.flowExpireAt} 前完成转账付款</p>
             </div>
           </div>
         </div>
@@ -182,7 +370,12 @@ function TransferFlowCard({ onQuery, onCancel }) {
           <button className="flow-action-button primary" onClick={onQuery} type="button">
             已转账
           </button>
-          <button className="flow-action-button outline" onClick={onCancel} type="button">
+          <button
+            className="flow-action-button outline"
+            data-testid="cancel-transfer"
+            onClick={onCancel}
+            type="button"
+          >
             取消
           </button>
         </div>
@@ -194,8 +387,9 @@ function TransferFlowCard({ onQuery, onCancel }) {
 function BankTransferSection({
   mode,
   selectedMethod,
+  order,
   onQuery,
-  onStart,
+  onSelect,
   onCancel,
 }) {
   const hasActiveFlow = mode === "pending";
@@ -207,29 +401,30 @@ function BankTransferSection({
       </div>
 
       {hasActiveFlow ? (
-        <TransferFlowCard
-          onQuery={onQuery}
-          onCancel={onCancel}
-        />
+        <TransferFlowCard order={order} onQuery={onQuery} onCancel={onCancel} />
       ) : (
-        <TransferOptionCard
-          selectedMethod={selectedMethod}
-          onStart={onStart}
-        />
+        <TransferOptionCard selectedMethod={selectedMethod} onSelect={onSelect} />
       )}
     </section>
   );
 }
 
-function OnlinePaySection({ mode, selectedMethod, onSelect }) {
-  const locked = mode === "pending" || mode === "paid";
+function OnlinePaySection({
+  mode,
+  selectedMethod,
+  onSelect,
+  walletCombinationLocked,
+}) {
+  const locked = mode === "pending" || mode === "paid" || walletCombinationLocked;
 
   return (
     <section className={`cashier-section online-section ${locked ? "locked" : ""}`}>
       <div className="section-title-row">
         <h2>在线支付</h2>
-        {locked && mode === "pending" ? (
+        {mode === "pending" ? (
           <span>当前存在进行中的腾讯微企付，请取消后再选择其他支付方式</span>
+        ) : walletCombinationLocked ? (
+          <span>已选择企业钱包，剩余金额请使用腾讯微企付完成</span>
         ) : null}
       </div>
       <div className="payment-grid">
@@ -238,6 +433,7 @@ function OnlinePaySection({ mode, selectedMethod, onSelect }) {
             className={`payment-card ${
               selectedMethod === method.key ? "selected" : ""
             }`}
+            data-testid={`online-${method.key}`}
             disabled={locked}
             key={method.key}
             onClick={() => onSelect(method.key)}
@@ -253,28 +449,50 @@ function OnlinePaySection({ mode, selectedMethod, onSelect }) {
   );
 }
 
-function BottomBar({ mode, selectedMethod, onPrimary }) {
-  const copy = MODE_COPY[mode];
+function BottomBar({ order, mode, walletSelected, selectedMethod, onPrimary }) {
+  const walletUse = getWalletUseAmount(order, walletSelected);
+  const remainingAfterWallet = Math.max(order.amount - walletUse, 0);
+  const hasFrozenWallet = (order.walletFrozen ?? 0) > 0;
+  const pendingAmount = order.transferAmount ?? order.amount;
   const onlineReady = Boolean(selectedMethod && selectedMethod !== "transfer");
   const transferReady = selectedMethod === "transfer" || mode === "pending";
-  const disabled = copy.bottomDisabled && !onlineReady && !transferReady;
-  let label = copy.bottomLabel;
-
-  if (onlineReady || (selectedMethod === "transfer" && mode !== "pending")) {
-    label = "立即支付";
-  }
+  const walletFullReady = walletSelected && walletUse > 0 && remainingAfterWallet === 0;
+  const disabled =
+    mode === "paid" ||
+    (!transferReady && !onlineReady && !walletFullReady) ||
+    (walletSelected && remainingAfterWallet > 0 && selectedMethod !== "transfer");
+  const label = mode === "pending" ? "继续转账" : "立即支付";
 
   return (
     <footer className="bottom-bar">
       <div className="payable">
-        <span>待支付：</span>
-        <strong>{ORDER.payable}</strong>
+        {mode === "pending" && hasFrozenWallet ? (
+          <>
+            <span>企业钱包冻结：</span>
+            <strong>{formatCurrency(order.walletFrozen)}</strong>
+            <span>待转账：</span>
+            <strong>{formatCurrency(pendingAmount)}</strong>
+          </>
+        ) : walletSelected && walletUse > 0 ? (
+          <>
+            <span>企业钱包：</span>
+            <strong>{formatCurrency(walletUse)}</strong>
+            <span>剩余待支付：</span>
+            <strong>{formatCurrency(remainingAfterWallet)}</strong>
+          </>
+        ) : (
+          <>
+            <span>待支付：</span>
+            <strong>{formatCurrency(order.amount)}</strong>
+          </>
+        )}
       </div>
       <button
         className={`bottom-primary ${disabled ? "disabled" : ""} ${
           mode === "paid" ? "complete" : ""
         }`}
-        disabled={disabled || mode === "paid"}
+        data-testid="primary-action"
+        disabled={disabled}
         onClick={onPrimary}
         type="button"
       >
@@ -332,7 +550,9 @@ function LoadingOverlay({ label = "处理中" }) {
   );
 }
 
-function WeiqifuPage({ onResolve }) {
+function WeiqifuPage({ order, onResolve }) {
+  const transferAmount = order.transferAmount ?? order.amount;
+
   return (
     <main className="weiqifu-page">
       <header className="weiqifu-header">
@@ -350,7 +570,7 @@ function WeiqifuPage({ onResolve }) {
         <div className="weiqifu-card">
           <div className="weiqifu-card-amount">
             <span>订单商城</span>
-            <strong>{ORDER.amount}</strong>
+            <strong>{formatCurrency(transferAmount)}</strong>
           </div>
 
           <div className="weiqifu-divider" />
@@ -381,12 +601,12 @@ function WeiqifuPage({ onResolve }) {
               </div>
               <div className="transfer-info-body">
                 <p className="transfer-deadline">
-                  请在 {ORDER.flowExpireAt} 前完成转账，超时将支付失败。
+                  请在 {order.flowExpireAt} 前完成转账，超时将支付失败。
                 </p>
                 <dl>
                   <div>
                     <dt>收款户名</dt>
-                    <dd>{ORDER.payeeName}</dd>
+                    <dd>{order.payeeName}</dd>
                     <button type="button">复制</button>
                   </div>
                   <div>
@@ -406,7 +626,7 @@ function WeiqifuPage({ onResolve }) {
                   </div>
                   <div>
                     <dt>转账附言</dt>
-                    <dd>WQ12345678987</dd>
+                    <dd>{order.transferRemark}</dd>
                     <button type="button">复制</button>
                   </div>
                 </dl>
@@ -422,15 +642,30 @@ function WeiqifuPage({ onResolve }) {
           </div>
 
           <div className="weiqifu-demo-actions">
-            <button className="success" onClick={() => onResolve("success")} type="button">
-              成功
-            </button>
-            <button className="failed" onClick={() => onResolve("failed")} type="button">
-              失败
-            </button>
-            <button className="pending" onClick={() => onResolve("finance")} type="button">
-              找财务转账
-            </button>
+          <button
+            className="success"
+            data-testid="weiqifu-success"
+            onClick={() => onResolve("success")}
+            type="button"
+          >
+            成功
+          </button>
+          <button
+            className="failed"
+            data-testid="weiqifu-failed"
+            onClick={() => onResolve("failed")}
+            type="button"
+          >
+            失败
+          </button>
+          <button
+            className="pending"
+            data-testid="weiqifu-finance"
+            onClick={() => onResolve("finance")}
+            type="button"
+          >
+            找财务转账
+          </button>
           </div>
 
           <div className="weiqifu-divider" />
@@ -457,7 +692,7 @@ function WeiqifuPage({ onResolve }) {
   );
 }
 
-function MerchantResultPage({ onBack }) {
+function MerchantResultPage({ order, onBack }) {
   return (
     <main className="merchant-page">
       <header className="merchant-page-header">
@@ -474,15 +709,15 @@ function MerchantResultPage({ onBack }) {
         <div className="merchant-order-card">
           <div>
             <span>订单编号</span>
-            <strong>{ORDER.orderNo}</strong>
+            <strong>{order.orderNo}</strong>
           </div>
           <div>
             <span>支付金额</span>
-            <strong>{ORDER.amount}</strong>
+            <strong>{formatCurrency(order.amount)}</strong>
           </div>
           <div>
             <span>支付方式</span>
-            <strong>腾讯微企付</strong>
+            <strong>{order.resultMethod ?? "腾讯微企付"}</strong>
           </div>
         </div>
 
@@ -500,86 +735,175 @@ function MerchantResultPage({ onBack }) {
 }
 
 export function App() {
-  const initialMode = getInitialMode();
-  const initialPage =
-    typeof window !== "undefined" &&
-    new URLSearchParams(window.location.search).get("page") === "weiqifu"
-      ? "weiqifu"
-      : "cashier";
-  const [mode, setMode] = useState(initialMode);
-  const [selectedMethod, setSelectedMethod] = useState(
-    initialMode === "pending" || initialMode === "paid" ? "transfer" : null,
-  );
+  const [selectedScenario, setSelectedScenario] = useState("recharge");
+  const [selectedPaymentCase, setSelectedPaymentCase] = useState("payment-200");
+  const [order, setOrder] = useState(() => createRuntimeOrder("recharge", "payment-200"));
+  const [page, setPage] = useState("simulator");
+  const [mode, setMode] = useState("idle");
+  const [walletSelected, setWalletSelected] = useState(false);
+  const [selectedMethod, setSelectedMethod] = useState(null);
   const [cancelOpen, setCancelOpen] = useState(false);
-  const [page, setPage] = useState(initialPage);
   const [loading, setLoading] = useState(false);
   const [loadingLabel, setLoadingLabel] = useState("处理中");
   const [queryDialogOpen, setQueryDialogOpen] = useState(false);
 
-  const isTerminal = mode === "paid";
-
   const visibleMethod = useMemo(() => {
-    if (mode === "pending" || mode === "paid") return "transfer";
+    if (mode === "pending") return "transfer";
     return selectedMethod;
   }, [mode, selectedMethod]);
 
-  function changeMode(nextMode) {
-    const normalizedMode = normalizeMode(nextMode);
-    setMode(normalizedMode);
-    syncUrlMode(normalizedMode);
-    setCancelOpen(false);
+  const walletUse = getWalletUseAmount(order, walletSelected);
+  const remainingAfterWallet = Math.max(order.amount - walletUse, 0);
+  const walletCombinationLocked = walletSelected && walletUse > 0 && remainingAfterWallet > 0;
+
+  function submitScenario() {
+    const nextOrder = createRuntimeOrder(selectedScenario, selectedPaymentCase);
+    setOrder(nextOrder);
     setPage("cashier");
-    syncUrlPage("cashier");
-    setLoading(false);
+    setMode("idle");
+    setWalletSelected(false);
+    setSelectedMethod(null);
+    setCancelOpen(false);
     setQueryDialogOpen(false);
-    if (normalizedMode === "pending") {
-      setSelectedMethod("transfer");
-    } else {
+  }
+
+  function returnToSimulator() {
+    setPage("simulator");
+    setMode("idle");
+    setWalletSelected(false);
+    setSelectedMethod(null);
+    setCancelOpen(false);
+    setQueryDialogOpen(false);
+    setLoading(false);
+  }
+
+  function selectWallet() {
+    if (!order.enterpriseCustomerId || mode !== "idle" || order.walletAvailable <= 0) {
+      return;
+    }
+
+    const nextSelected = !walletSelected;
+    setWalletSelected(nextSelected);
+    if (nextSelected && selectedMethod !== "transfer") {
       setSelectedMethod(null);
     }
   }
 
   function selectTransfer() {
-    if (isTerminal) return;
+    if (mode === "paid") return;
     setQueryDialogOpen(false);
     setSelectedMethod("transfer");
-  }
-
-  function startTransfer() {
-    if (isTerminal) return;
-    setSelectedMethod("transfer");
-    setQueryDialogOpen(false);
-    setPage("weiqifu");
-    syncUrlPage("weiqifu");
   }
 
   function selectOnline(method) {
-    if (mode === "pending" || mode === "paid") return;
+    if (mode === "pending" || mode === "paid" || walletCombinationLocked) return;
     setQueryDialogOpen(false);
+    setWalletSelected(false);
     setSelectedMethod(method);
+  }
+
+  function openWeiqifuWithTransfer() {
+    const frozenAmount = walletSelected ? walletUse : 0;
+    const transferAmount =
+      walletSelected && remainingAfterWallet > 0 ? remainingAfterWallet : order.amount;
+
+    setOrder((current) => ({
+      ...current,
+      walletAvailable:
+        typeof current.walletAvailable === "number"
+          ? current.walletAvailable - frozenAmount
+          : null,
+      walletFrozen: frozenAmount,
+      walletUsedAmount: frozenAmount,
+      transferAmount,
+      transferStatus: "created",
+      resultMethod: frozenAmount > 0 ? "企业钱包账户 + 腾讯微企付" : "腾讯微企付",
+    }));
+    setPage("weiqifu");
+  }
+
+  function completeWalletOnlyPayment() {
+    const walletDebitAmount = walletUse;
+
+    flushSync(() => {
+      setLoadingLabel("扣款中");
+      setLoading(true);
+      setQueryDialogOpen(false);
+    });
+
+    window.setTimeout(() => {
+      setOrder((current) => ({
+        ...current,
+        walletAvailable:
+          typeof current.walletAvailable === "number"
+            ? current.walletAvailable - walletDebitAmount
+            : null,
+        walletUsedAmount: walletDebitAmount,
+        resultMethod: "企业钱包账户",
+      }));
+      setLoading(false);
+      setLoadingLabel("处理中");
+      setMode("paid");
+      setPage("merchant");
+      setWalletSelected(false);
+      setSelectedMethod(null);
+    }, 850);
+  }
+
+  function completeOnlinePayment() {
+    const methodLabel =
+      ONLINE_METHODS.find((method) => method.key === selectedMethod)?.label ?? "在线支付";
+
+    flushSync(() => {
+      setLoadingLabel("支付中");
+      setLoading(true);
+      setQueryDialogOpen(false);
+    });
+
+    window.setTimeout(() => {
+      setOrder((current) => ({
+        ...current,
+        resultMethod: methodLabel,
+      }));
+      setLoading(false);
+      setLoadingLabel("处理中");
+      setMode("paid");
+      setPage("merchant");
+      setSelectedMethod(null);
+    }, 850);
   }
 
   function primaryAction() {
     if (mode === "pending") {
       setPage("weiqifu");
-      syncUrlPage("weiqifu");
       return;
     }
+
+    if (walletSelected && walletUse > 0 && remainingAfterWallet === 0) {
+      completeWalletOnlyPayment();
+      return;
+    }
+
     if (selectedMethod === "transfer") {
-      startTransfer();
+      openWeiqifuWithTransfer();
       return;
     }
+
     if (selectedMethod) {
-      setMode("paid");
-      syncUrlMode("paid");
-      setSelectedMethod("transfer");
+      completeOnlinePayment();
     }
   }
 
   function confirmCancel() {
+    setOrder((current) => ({
+      ...releaseWalletFreeze(current),
+      transferAmount: null,
+      transferStatus: null,
+      resultMethod: null,
+    }));
     setMode("idle");
-    syncUrlMode("idle");
     setSelectedMethod(null);
+    setWalletSelected(false);
     setQueryDialogOpen(false);
     setCancelOpen(false);
   }
@@ -600,64 +924,105 @@ export function App() {
   }
 
   function resolveWeiqifu(result) {
+    const hasFrozenWallet = (order.walletFrozen ?? 0) > 0;
+
     flushSync(() => {
       setPage("cashier");
       setLoadingLabel("处理中");
       setLoading(true);
       setQueryDialogOpen(false);
-      setSelectedMethod(result === "finance" ? "transfer" : null);
     });
-    syncUrlPage("cashier");
 
     window.setTimeout(() => {
       setLoading(false);
+      setLoadingLabel("处理中");
+
       if (result === "success") {
+        setOrder((current) => ({
+          ...current,
+          walletFrozen: 0,
+          transferStatus: "success",
+          resultMethod: current.resultMethod ?? "腾讯微企付",
+        }));
         setMode("paid");
-        syncUrlMode("paid");
+        setPage("merchant");
+        setWalletSelected(false);
         setSelectedMethod(null);
-      } else if (result === "finance") {
-        setMode("pending");
-        syncUrlMode("pending");
-        setSelectedMethod("transfer");
-      } else {
-        setMode("idle");
-        syncUrlMode("idle");
-        setSelectedMethod(null);
+        return;
       }
+
+      if (result === "finance") {
+        setMode("pending");
+        setSelectedMethod("transfer");
+        setWalletSelected(hasFrozenWallet);
+        return;
+      }
+
+      setOrder((current) => ({
+        ...releaseWalletFreeze(current),
+        transferAmount: null,
+        transferStatus: "failed",
+        resultMethod: null,
+      }));
+      setMode("idle");
+      setWalletSelected(false);
+      setSelectedMethod(null);
     }, 850);
   }
 
-  if (page === "weiqifu") {
-    return <WeiqifuPage onResolve={resolveWeiqifu} />;
+  if (page === "simulator") {
+    return (
+      <OrderSimulatorPage
+        selectedScenario={selectedScenario}
+        selectedPaymentCase={selectedPaymentCase}
+        onScenarioChange={setSelectedScenario}
+        onPaymentCaseChange={setSelectedPaymentCase}
+        onSubmit={submitScenario}
+      />
+    );
   }
 
-  if (mode === "paid") {
-    return <MerchantResultPage onBack={() => changeMode("idle")} />;
+  if (page === "weiqifu") {
+    return <WeiqifuPage order={order} onResolve={resolveWeiqifu} />;
+  }
+
+  if (page === "merchant" || mode === "paid") {
+    return <MerchantResultPage order={order} onBack={returnToSimulator} />;
   }
 
   return (
     <>
-      <AppHeader />
+      <AppHeader onBack={returnToSimulator} />
       <main className="page-shell">
-        <OrderSummary />
+        <OrderSummary order={order} />
 
         <section className="cashier-panel">
+          <EnterpriseWalletSection
+            order={order}
+            mode={mode}
+            selected={walletSelected}
+            onToggle={selectWallet}
+          />
           <BankTransferSection
             mode={mode}
             selectedMethod={visibleMethod}
+            order={order}
             onQuery={queryTransferResult}
-            onStart={selectTransfer}
+            onSelect={selectTransfer}
             onCancel={() => setCancelOpen(true)}
           />
           <OnlinePaySection
             mode={mode}
             selectedMethod={visibleMethod}
             onSelect={selectOnline}
+            walletCombinationLocked={walletCombinationLocked}
           />
         </section>
       </main>
       <BottomBar
+        order={order}
         mode={mode}
+        walletSelected={walletSelected}
         selectedMethod={visibleMethod}
         onPrimary={primaryAction}
       />
