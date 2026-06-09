@@ -1,0 +1,743 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>轻 POS B2B 收银台流程看板</title>
+    <style>
+      :root {
+        --bg: #f5f5f5;
+        --panel: #ffffff;
+        --ink: #1f1f1f;
+        --muted: #737373;
+        --subtle: #9b9b9b;
+        --line: #dddddd;
+        --soft: #f3f3f3;
+        --dark: #303030;
+        --accent: #0bbf67;
+        --danger: #e8483f;
+        --shadow: 0 10px 28px rgba(0, 0, 0, 0.08);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-width: 1240px;
+        color: var(--ink);
+        background: var(--bg);
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+          "Microsoft YaHei", Arial, sans-serif;
+      }
+
+      .page-header {
+        position: sticky;
+        top: 0;
+        z-index: 30;
+        padding: 22px 32px 18px;
+        background: rgba(255, 255, 255, 0.95);
+        border-bottom: 1px solid #e9e9e9;
+        backdrop-filter: blur(10px);
+      }
+
+      .header-main {
+        display: flex;
+        justify-content: space-between;
+        gap: 32px;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 28px;
+        line-height: 1.25;
+        font-weight: 700;
+      }
+
+      .subtitle {
+        margin: 10px 0 0;
+        max-width: 850px;
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.7;
+      }
+
+      .header-links {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 10px;
+        min-width: 360px;
+      }
+
+      .header-link {
+        display: inline-flex;
+        align-items: center;
+        height: 34px;
+        padding: 0 14px;
+        color: var(--ink);
+        text-decoration: none;
+        background: #f4f4f4;
+        border: 1px solid transparent;
+        border-radius: 17px;
+        font-size: 13px;
+      }
+
+      .header-link:hover {
+        border-color: var(--ink);
+      }
+
+      .content {
+        padding: 28px 32px 64px;
+      }
+
+      .rule-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(220px, 1fr));
+        gap: 14px;
+        margin-bottom: 28px;
+      }
+
+      .rule-card {
+        min-height: 96px;
+        padding: 18px;
+        background: var(--panel);
+        border-radius: 8px;
+        box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
+      }
+
+      .rule-card strong {
+        display: block;
+        margin-bottom: 8px;
+        font-size: 15px;
+      }
+
+      .rule-card span {
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.65;
+      }
+
+      .flow-section {
+        margin-top: 32px;
+        background: var(--panel);
+        border-radius: 10px;
+        box-shadow: var(--shadow);
+        overflow: hidden;
+      }
+
+      .flow-section-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 24px;
+        padding: 22px 26px;
+        border-bottom: 1px solid #eeeeee;
+      }
+
+      .flow-section h2 {
+        margin: 0;
+        font-size: 22px;
+        font-weight: 700;
+      }
+
+      .flow-section-head p {
+        margin: 8px 0 0;
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.6;
+      }
+
+      .flow-meta {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 8px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .meta-pill {
+        display: inline-flex;
+        align-items: center;
+        height: 26px;
+        padding: 0 10px;
+        background: #f3f3f3;
+        border-radius: 13px;
+      }
+
+      .flow-lanes {
+        padding: 24px 26px 30px;
+      }
+
+      .lane {
+        margin-bottom: 26px;
+        background: #fafafa;
+        border: 1px solid #eeeeee;
+        border-radius: 8px;
+        overflow: hidden;
+      }
+
+      .lane:last-child {
+        margin-bottom: 0;
+      }
+
+      .lane-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 18px;
+        padding: 16px 18px;
+        background: #ffffff;
+        border-bottom: 1px solid #eeeeee;
+      }
+
+      .lane-title {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 700;
+      }
+
+      .lane-desc {
+        margin: 6px 0 0;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.6;
+      }
+
+      .lane-badge {
+        display: inline-flex;
+        flex: 0 0 auto;
+        align-items: center;
+        height: 24px;
+        padding: 0 10px;
+        color: #ffffff;
+        background: var(--dark);
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .lane-scroll {
+        width: 100%;
+        overflow-x: auto;
+        padding: 18px;
+      }
+
+      .lane-row {
+        display: flex;
+        align-items: stretch;
+        gap: 0;
+        min-width: max-content;
+      }
+
+      .flow-node {
+        flex: 0 0 270px;
+        background: #ffffff;
+        border: 1px solid #dcdcdc;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.07);
+      }
+
+      .flow-node.h5-node {
+        flex-basis: 248px;
+      }
+
+      .node-head {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-height: 48px;
+        padding: 12px 13px;
+        border-bottom: 1px solid #eeeeee;
+      }
+
+      .node-code {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 48px;
+        height: 24px;
+        padding: 0 8px;
+        color: #ffffff;
+        background: var(--dark);
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .flow-node.success .node-code {
+        background: var(--accent);
+      }
+
+      .flow-node.warning .node-code {
+        background: #767676;
+      }
+
+      .flow-node.danger .node-code {
+        background: var(--danger);
+      }
+
+      .node-title {
+        margin: 0;
+        font-size: 15px;
+        line-height: 1.35;
+        font-weight: 700;
+      }
+
+      .node-image {
+        display: block;
+        width: 100%;
+        height: 150px;
+        object-fit: cover;
+        object-position: top center;
+        background: #f0f0f0;
+      }
+
+      .h5-node .node-image {
+        height: 210px;
+      }
+
+      .node-body {
+        padding: 12px 13px 14px;
+      }
+
+      .node-row {
+        display: grid;
+        grid-template-columns: 52px 1fr;
+        gap: 8px;
+        margin: 0;
+        font-size: 13px;
+        line-height: 1.55;
+      }
+
+      .node-row + .node-row {
+        margin-top: 8px;
+      }
+
+      .node-row dt {
+        color: var(--subtle);
+      }
+
+      .node-row dd {
+        margin: 0;
+        color: #333333;
+      }
+
+      .connector {
+        position: relative;
+        flex: 0 0 70px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100%;
+      }
+
+      .connector::before {
+        content: "";
+        position: absolute;
+        left: 10px;
+        right: 10px;
+        top: 50%;
+        border-top: 2px solid #4d4d4d;
+      }
+
+      .connector::after {
+        content: "";
+        position: absolute;
+        right: 8px;
+        top: calc(50% - 5px);
+        width: 10px;
+        height: 10px;
+        border-top: 2px solid #4d4d4d;
+        border-right: 2px solid #4d4d4d;
+        transform: rotate(45deg);
+        background: transparent;
+      }
+
+      .connector.secondary::before {
+        border-top-color: #bdbdbd;
+        border-top-style: dashed;
+      }
+
+      .connector.secondary::after {
+        border-color: #bdbdbd;
+      }
+
+      .connector-label {
+        position: relative;
+        z-index: 1;
+        max-width: 66px;
+        padding: 4px 6px;
+        color: #333333;
+        background: #ffffff;
+        border: 1px solid #e6e6e6;
+        border-radius: 12px;
+        font-size: 12px;
+        line-height: 1.35;
+        text-align: center;
+      }
+
+      .lane-notes {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(260px, 1fr));
+        gap: 10px;
+        padding: 0 18px 18px;
+      }
+
+      .lane-note {
+        padding: 12px 14px;
+        color: #333333;
+        background: #ffffff;
+        border-left: 3px solid var(--dark);
+        border-radius: 6px;
+        font-size: 13px;
+        line-height: 1.6;
+      }
+
+      .lane-note.secondary {
+        color: var(--muted);
+        border-left-color: #bdbdbd;
+      }
+
+      .footer-note {
+        margin: 28px 0 0;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.7;
+      }
+    </style>
+  </head>
+  <body>
+    <header class="page-header">
+      <div class="header-main">
+        <div>
+          <h1>轻 POS B2B 收银台页面流程看板</h1>
+          <p class="subtitle">
+            改为分场景泳道展示：每条链路只保留相邻节点连线，避免跨屏长线和节点重叠。PC 与 H5 使用同一套业务状态，截图来自本地原型自动化跑流。
+          </p>
+        </div>
+        <nav class="header-links" aria-label="prototype links">
+          <a class="header-link" href="https://lch6s.github.io/light-pos-cashier-demo/" target="_blank">PC 原型</a>
+          <a class="header-link" href="https://lch6s.github.io/light-pos-cashier-demo/?demo=mobile" target="_blank">H5 原型</a>
+          <a class="header-link" href="#pc-flow">PC 流程</a>
+          <a class="header-link" href="#h5-flow">H5 流程</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="content">
+      <section class="rule-grid" aria-label="rule summary">
+        <div class="rule-card">
+          <strong>B2B 模式入口</strong>
+          <span>业务方创建订单时传入 B2B 业务类型；企业充值不传企业客户 id，企业付款传企业客户 id。</span>
+        </div>
+        <div class="rule-card">
+          <strong>企业钱包展示</strong>
+          <span>品牌开通企业钱包且订单传入企业客户 id 时展示；余额为 0 或查询异常时展示无可用余额，不可作为资金来源。</span>
+        </div>
+        <div class="rule-card">
+          <strong>组合支付规则</strong>
+          <span>企业钱包可与在线支付组合；本期不支持企业钱包与腾讯微企付银行转账同时使用。</span>
+        </div>
+        <div class="rule-card">
+          <strong>银行转账处理中</strong>
+          <span>腾讯微企付进行中时不可修改支付方式；需继续转账、触发已转账查询，或取消后回到未发起状态。</span>
+        </div>
+      </section>
+
+      <section class="flow-section" id="pc-flow">
+        <div class="flow-section-head">
+          <div>
+            <h2>PC 流程</h2>
+            <p>PC 收银台按业务链路拆成 8 条泳道。相同页面状态会在不同链路中重复出现，目的是让每条链路可以独立阅读。</p>
+          </div>
+          <div class="flow-meta">
+            <span class="meta-pill">12 个状态截图</span>
+            <span class="meta-pill">8 条泳道</span>
+            <span class="meta-pill">PC</span>
+          </div>
+        </div>
+        <div class="flow-lanes" data-flow="pc"></div>
+      </section>
+
+      <section class="flow-section" id="h5-flow">
+        <div class="flow-section-head">
+          <div>
+            <h2>H5 流程</h2>
+            <p>H5 与 PC 保持同一业务规则。选择腾讯微企付后进入移动版微企付演示页，银行转账处理中使用移动端卡片样式。</p>
+          </div>
+          <div class="flow-meta">
+            <span class="meta-pill">12 个状态截图</span>
+            <span class="meta-pill">8 条泳道</span>
+            <span class="meta-pill">H5</span>
+          </div>
+        </div>
+        <div class="flow-lanes" data-flow="h5"></div>
+      </section>
+
+      <p class="footer-note">
+        注：看板内连线表达产品状态流转，不代表接口调用时序。腾讯微企付“已转账”仅触发查询；查到成功则订单成功，查到失败则回到可继续支付状态，未查到最终态或查询异常共用提示弹窗。
+      </p>
+    </main>
+
+    <script>
+      const stateMap = {
+        simulator: {
+          seq: "01",
+          title: "B2B 订单模拟下单页",
+          trigger: "选择企业充值或企业付款，点击模拟下单",
+          note: "确定业务类型、企业客户 id、订单金额和企业钱包余额。",
+          image: "01-order-simulator.png",
+        },
+        idle: {
+          seq: "02",
+          title: "收银台未发起",
+          trigger: "进入收银台，未选择支付方式",
+          note: "根据订单场景展示企业钱包、腾讯微企付和在线支付。",
+          image: "02-cashier-idle.png",
+        },
+        walletInsufficient: {
+          seq: "03",
+          title: "企业钱包选中：余额不足",
+          trigger: "选择企业钱包账户，余额小于订单金额",
+          note: "企业钱包抵扣可用余额，剩余金额需选择在线支付；如切腾讯微企付需二次确认。",
+          image: "03-wallet-insufficient-selected.png",
+        },
+        walletOnline: {
+          seq: "04",
+          title: "企业钱包 + 在线支付组合",
+          trigger: "选择在线支付并点击立即支付",
+          note: "在线支付作为关联交易；成功后扣除企业钱包抵扣金额，失败后释放。",
+          image: "04-wallet-online-combo.png",
+        },
+        walletFull: {
+          seq: "05",
+          title: "企业钱包选中：余额充足",
+          trigger: "选择企业钱包账户，余额覆盖订单金额",
+          note: "企业钱包全额抵扣，无需选择其他支付方式；点击立即支付后直接扣款。",
+          image: "05-wallet-full-selected.png",
+          tone: "success",
+        },
+        transferSelected: {
+          seq: "06",
+          title: "腾讯微企付选中",
+          trigger: "选择腾讯微企付银行转账",
+          note: "未使用企业钱包时，腾讯微企付按待支付金额发起。",
+          image: "06-transfer-selected.png",
+        },
+        switchDialog: {
+          seq: "07",
+          title: "互斥切换弹窗",
+          trigger: "已选企业钱包时点击腾讯微企付",
+          note: "提示银行转账暂不支持与企业钱包余额同时使用；确认后切换，取消则保留钱包。",
+          image: "07-wallet-transfer-switch-dialog.png",
+          tone: "warning",
+        },
+        weiqifu: {
+          seq: "08",
+          title: "腾讯微企付演示页",
+          trigger: "点击立即支付或继续转账",
+          note: "展示收款账户和转账附言；可模拟成功、失败、找财务转账。",
+          image: "08-weiqifu-page.png",
+        },
+        pending: {
+          seq: "09",
+          title: "银行转账处理中",
+          trigger: "微企付页点击找财务转账，或用户复进收银台",
+          note: "集中展示腾讯微企付信息；不可修改支付方式，只能继续、查询或取消。",
+          image: "09-transfer-pending.png",
+        },
+        queryDialog: {
+          seq: "10",
+          title: "已转账查询弹窗",
+          trigger: "点击已转账",
+          note: "仅触发查询；未查询到最终状态或查询异常时弹窗提示，仍保持处理中。",
+          image: "10-query-result-dialog.png",
+        },
+        cancelDialog: {
+          seq: "11",
+          title: "取消银行转账弹窗",
+          trigger: "点击取消",
+          note: "确认取消后关闭腾讯微企付交易；如有关联钱包抵扣，则释放占用并回到未发起。",
+          image: "11-cancel-transfer-dialog.png",
+          tone: "danger",
+        },
+        result: {
+          seq: "12",
+          title: "业务方结果页",
+          trigger: "支付成功",
+          note: "轻 POS 完成支付后跳转业务方结果页，由业务方承接后续展示。",
+          image: "12-merchant-result.png",
+          tone: "success",
+        },
+      };
+
+      const lanes = [
+        {
+          title: "入口与初始态",
+          desc: "从 B2B 订单模拟下单页进入收银台，形成后续所有分支的共同入口。",
+          badge: "入口",
+          nodes: ["simulator", "idle"],
+          connectors: ["模拟下单"],
+        },
+        {
+          title: "企业钱包余额不足：与在线支付组合",
+          desc: "企业钱包可抵扣部分金额，剩余金额只能选择在线支付完成支付。",
+          badge: "钱包 + 在线",
+          nodes: ["idle", "walletInsufficient", "walletOnline", "result"],
+          connectors: ["选择钱包：余额 200", "选择在线支付", "在线支付成功"],
+          notes: [
+            "在线支付失败：释放企业钱包抵扣金额，订单未过期时回到可继续支付状态。",
+            "本期不支持钱包与腾讯微企付银行转账组合；如果用户点击腾讯微企付，进入互斥切换弹窗。",
+          ],
+        },
+        {
+          title: "企业钱包余额充足：全额支付",
+          desc: "企业钱包余额大于等于订单金额时，银行转账和在线支付无需再参与。",
+          badge: "钱包全额",
+          nodes: ["idle", "walletFull", "result"],
+          connectors: ["选择钱包：余额 4000", "立即支付"],
+        },
+        {
+          title: "腾讯微企付独立银行转账",
+          desc: "未选择企业钱包时，用户可直接选择腾讯微企付，并跳转微企付页面获取转账信息。",
+          badge: "银行转账",
+          nodes: ["idle", "transferSelected", "weiqifu", "pending"],
+          connectors: ["选择腾讯微企付", "立即支付", "找财务转账"],
+          notes: [
+            "微企付页点击成功：返回收银台 loading 后跳转业务方结果页。",
+            "微企付页点击失败：交易失败，订单未过期时回到未发起状态，可重新选择支付方式。",
+          ],
+        },
+        {
+          title: "企业钱包与腾讯微企付互斥切换",
+          desc: "用户已选择企业钱包后，仍可点击腾讯微企付，但必须先确认是否切换。",
+          badge: "互斥切换",
+          nodes: ["walletInsufficient", "switchDialog", "transferSelected"],
+          connectors: ["点击腾讯微企付", "确认切换"],
+          notes: [
+            "弹窗点击取消：保留企业钱包选中态，继续引导用户选择在线支付。",
+            "弹窗点击确认：取消企业钱包抵扣，切换为腾讯微企付独立银行转账。",
+          ],
+        },
+        {
+          title: "银行转账处理中：继续转账",
+          desc: "用户复进收银台后，可继续打开原腾讯微企付交易，重新查看收款账户和转账附言。",
+          badge: "继续",
+          nodes: ["pending", "weiqifu", "result"],
+          connectors: ["继续转账", "微企付成功"],
+          notes: [
+            "微企付页点击找财务转账：返回银行转账处理中，等待财务完成转账。",
+            "微企付页点击失败：交易失败，订单未过期时回到未发起状态。",
+          ],
+        },
+        {
+          title: "银行转账处理中：已转账查询",
+          desc: "用户点击已转账只触发查询，不直接改变订单状态。",
+          badge: "查询",
+          nodes: ["pending", "queryDialog", "pending"],
+          connectors: ["已转账", "未到最终态"],
+          notes: [
+            "查到成功：腾讯微企付交易成功，订单成功，跳转业务方结果页。",
+            "查到失败：腾讯微企付交易失败；订单未过期时回到未发起，可继续选择支付方式。",
+          ],
+        },
+        {
+          title: "银行转账处理中：取消银行转账",
+          desc: "如需更换支付方式，必须先取消当前银行转账。",
+          badge: "取消",
+          nodes: ["pending", "cancelDialog", "idle"],
+          connectors: ["取消", "确认取消"],
+          notes: [
+            "确认取消后关闭当前腾讯微企付交易；如存在企业钱包关联占用，立即释放。",
+            "弹窗点击暂不取消：保留银行转账处理中状态。",
+          ],
+        },
+      ];
+
+      function createNode(flow, key) {
+        const state = stateMap[key];
+        const node = document.createElement("article");
+        node.className = `flow-node ${flow === "h5" ? "h5-node" : ""} ${state.tone || ""}`;
+        node.innerHTML = `
+          <div class="node-head">
+            <span class="node-code">${flow.toUpperCase()}-${state.seq}</span>
+            <h3 class="node-title">${state.title}</h3>
+          </div>
+          <img class="node-image" src="./screenshots/${flow}/${state.image}" alt="${flow.toUpperCase()} ${state.title}" />
+          <div class="node-body">
+            <dl class="node-row">
+              <dt>触发</dt>
+              <dd>${state.trigger}</dd>
+            </dl>
+            <dl class="node-row">
+              <dt>变化</dt>
+              <dd>${state.note}</dd>
+            </dl>
+          </div>
+        `;
+        return node;
+      }
+
+      function createConnector(label, index, lane) {
+        const connector = document.createElement("div");
+        const secondary = lane.title.includes("处理中") && index > 0;
+        connector.className = `connector ${secondary ? "secondary" : ""}`;
+        connector.innerHTML = `<span class="connector-label">${label}</span>`;
+        return connector;
+      }
+
+      function renderFlow(flow) {
+        const target = document.querySelector(`[data-flow="${flow}"]`);
+        lanes.forEach((lane, laneIndex) => {
+          const section = document.createElement("section");
+          section.className = "lane";
+
+          const head = document.createElement("div");
+          head.className = "lane-head";
+          head.innerHTML = `
+            <div>
+              <h3 class="lane-title">${lane.title}</h3>
+              <p class="lane-desc">${lane.desc}</p>
+            </div>
+            <span class="lane-badge">${lane.badge}</span>
+          `;
+          section.appendChild(head);
+
+          const scroll = document.createElement("div");
+          scroll.className = "lane-scroll";
+          const row = document.createElement("div");
+          row.className = "lane-row";
+
+          lane.nodes.forEach((nodeKey, nodeIndex) => {
+            row.appendChild(createNode(flow, nodeKey));
+            if (nodeIndex < lane.nodes.length - 1) {
+              row.appendChild(createConnector(lane.connectors[nodeIndex], nodeIndex, lane));
+            }
+          });
+
+          scroll.appendChild(row);
+          section.appendChild(scroll);
+
+          if (lane.notes?.length) {
+            const notes = document.createElement("div");
+            notes.className = "lane-notes";
+            notes.innerHTML = lane.notes
+              .map((note, index) => `<div class="lane-note ${index > 0 ? "secondary" : ""}">${note}</div>`)
+              .join("");
+            section.appendChild(notes);
+          }
+
+          target.appendChild(section);
+        });
+      }
+
+      renderFlow("pc");
+      renderFlow("h5");
+    </script>
+  </body>
+</html>
