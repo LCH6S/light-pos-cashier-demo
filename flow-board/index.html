@@ -445,7 +445,7 @@
         </div>
         <div class="rule-card">
           <strong>银行转账处理中</strong>
-          <span>腾讯微企付进行中时不可修改支付方式；需继续转账、触发已转账查询，或取消后回到未发起状态。</span>
+          <span>腾讯微企付进行中时不可修改支付方式；PC 展示二维码，引导用户使用微信扫码查看转账信息，H5 直接进入微企付 H5 页面。</span>
         </div>
       </section>
 
@@ -453,11 +453,11 @@
         <div class="flow-section-head">
           <div>
             <h2>PC 流程</h2>
-            <p>PC 收银台按业务链路拆成 8 条泳道。相同页面状态会在不同链路中重复出现，目的是让每条链路可以独立阅读。</p>
+            <p>PC 收银台按业务链路拆成 7 条泳道。选择腾讯微企付后创建 H5 微企付交易，收银台直接进入二维码处理中页。</p>
           </div>
           <div class="flow-meta">
             <span class="meta-pill">12 个状态截图</span>
-            <span class="meta-pill">8 条泳道</span>
+            <span class="meta-pill">7 条泳道</span>
             <span class="meta-pill">PC</span>
           </div>
         </div>
@@ -468,7 +468,7 @@
         <div class="flow-section-head">
           <div>
             <h2>H5 流程</h2>
-            <p>H5 与 PC 保持同一业务规则。选择腾讯微企付后进入移动版微企付演示页，银行转账处理中使用移动端卡片样式。</p>
+            <p>H5 与 PC 保持同一业务规则。选择腾讯微企付后直接进入微企付 H5 页面，银行转账处理中使用移动端卡片样式。</p>
           </div>
           <div class="flow-meta">
             <span class="meta-pill">12 个状态截图</span>
@@ -480,7 +480,7 @@
       </section>
 
       <p class="footer-note">
-        注：看板内连线表达产品状态流转，不代表接口调用时序。腾讯微企付“已转账”仅触发查询；查到成功则订单成功，查到失败则回到可继续支付状态，未查到最终态或查询异常共用提示弹窗。
+        注：看板内连线表达产品状态流转，不代表接口调用时序。腾讯微企付转账截止时间固定为发起后 24 小时；“已转账”仅触发查询，查到成功则订单成功，查到失败则回到可继续支付状态，未查到最终态或查询异常共用提示弹窗。
       </p>
     </main>
 
@@ -539,16 +539,23 @@
         },
         weiqifu: {
           seq: "08",
-          title: "腾讯微企付演示页",
-          trigger: "点击立即支付或继续转账",
-          note: "展示收款账户和转账附言；可模拟成功、失败、找财务转账。",
+          title: "腾讯微企付 H5 页面",
+          trigger: "H5 点击去支付",
+          note: "展示收款账户、转账附言和 24 小时转账截止时间；可模拟成功、失败、找财务转账。",
           image: "08-weiqifu-page.png",
+        },
+        pcTransferPendingQr: {
+          seq: "08",
+          title: "银行转账处理中（二维码）",
+          trigger: "PC 点击立即支付，创建 H5 微企付交易",
+          note: "PC 不跳桌面版微企付页面，直接展示二维码，引导用户使用微信扫码查看转账信息。",
+          image: "08-pc-transfer-pending-qr.png",
         },
         pending: {
           seq: "09",
           title: "银行转账处理中",
-          trigger: "微企付页点击找财务转账，或用户复进收银台",
-          note: "集中展示腾讯微企付信息；不可修改支付方式，只能继续、查询或取消。",
+          trigger: "用户复进收银台，或 H5 微企付页点击找财务转账",
+          note: "集中展示腾讯微企付信息；不可修改支付方式，只能查询或取消。",
           image: "09-transfer-pending.png",
         },
         queryDialog: {
@@ -576,7 +583,7 @@
         },
       };
 
-      const lanes = [
+      const commonLanes = [
         {
           title: "入口与初始态",
           desc: "从 B2B 订单模拟下单页进入收银台，形成后续所有分支的共同入口。",
@@ -603,17 +610,6 @@
           connectors: ["选择钱包：余额 4000", "立即支付"],
         },
         {
-          title: "腾讯微企付独立银行转账",
-          desc: "未选择企业钱包时，用户可直接选择腾讯微企付，并跳转微企付页面获取转账信息。",
-          badge: "银行转账",
-          nodes: ["idle", "transferSelected", "weiqifu", "pending"],
-          connectors: ["选择腾讯微企付", "立即支付", "找财务转账"],
-          notes: [
-            "微企付页点击成功：返回收银台 loading 后跳转业务方结果页。",
-            "微企付页点击失败：交易失败，订单未过期时回到未发起状态，可重新选择支付方式。",
-          ],
-        },
-        {
           title: "企业钱包与腾讯微企付互斥切换",
           desc: "用户已选择企业钱包后，仍可点击腾讯微企付，但必须先确认是否切换。",
           badge: "互斥切换",
@@ -624,17 +620,37 @@
             "弹窗点击确认：取消企业钱包抵扣，切换为腾讯微企付独立银行转账。",
           ],
         },
+      ];
+
+      const pcLanes = [
         {
-          title: "银行转账处理中：继续转账",
-          desc: "用户复进收银台后，可继续打开原腾讯微企付交易，重新查看收款账户和转账附言。",
-          badge: "继续",
-          nodes: ["pending", "weiqifu", "result"],
-          connectors: ["继续转账", "微企付成功"],
+          title: "腾讯微企付独立银行转账",
+          desc: "PC 选择腾讯微企付后，后端按 H5 模式创建微企付交易，收银台直接进入二维码处理中页。",
+          badge: "PC 二维码",
+          nodes: ["idle", "transferSelected", "pcTransferPendingQr"],
+          connectors: ["选择腾讯微企付", "立即支付"],
           notes: [
-            "微企付页点击找财务转账：返回银行转账处理中，等待财务完成转账。",
-            "微企付页点击失败：交易失败，订单未过期时回到未发起状态。",
+            "二维码对应渠道方返回的腾讯微企付 H5 链接，供微信扫码查看收款信息和转账附言。",
+            "转账截止时间固定为交易发起后 24 小时。",
           ],
         },
+      ];
+
+      const h5Lanes = [
+        {
+          title: "腾讯微企付独立银行转账",
+          desc: "H5 选择腾讯微企付后，直接进入腾讯微企付 H5 页面获取转账信息。",
+          badge: "H5 页面",
+          nodes: ["idle", "transferSelected", "weiqifu", "pending"],
+          connectors: ["选择腾讯微企付", "去支付", "找财务转账"],
+          notes: [
+            "微企付 H5 页点击成功：返回收银台 loading 后跳转业务方结果页。",
+            "微企付 H5 页点击失败：交易失败，订单未过期时回到未发起状态。",
+          ],
+        },
+      ];
+
+      const pendingLanes = [
         {
           title: "银行转账处理中：已转账查询",
           desc: "用户点击已转账只触发查询，不直接改变订单状态。",
@@ -693,6 +709,11 @@
 
       function renderFlow(flow) {
         const target = document.querySelector(`[data-flow="${flow}"]`);
+        const lanes = [
+          ...commonLanes,
+          ...(flow === "pc" ? pcLanes : h5Lanes),
+          ...pendingLanes,
+        ];
         lanes.forEach((lane, laneIndex) => {
           const section = document.createElement("section");
           section.className = "lane";
